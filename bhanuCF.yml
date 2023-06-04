@@ -1,0 +1,77 @@
+ Parameters:
+  SSHkey:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 key pair to enable SSH access to the instances
+  myVPC:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  mySubnet:
+    Description: subnet Id
+    Type: AWS::EC2::Subnet::Id
+Resources:
+  ExampleInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref EC2IAM
+      InstanceProfileName: profileinstance
+  Ec2Instance: 
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref SSHkey
+      DisableApiTermination: false
+      ImageId: ami-01107263728f3bef4
+      AvailabilityZone: us-east-2b
+      InstanceType: t2.micro
+      Monitoring: false
+      NetworkInterfaces: 
+       - AssociatePublicIpAddress: "true"
+         DeviceIndex: "0"
+         GroupSet: 
+          - !Ref InstanceSecurityGroup
+         SubnetId: !Ref mySubnet
+      UserData:
+          Fn::Base64: 
+            !Sub |
+             #!/bin/bash
+             yum update -y
+             yum install -y httpd.x86_64
+             systemctl start httpd.service
+             systemctl enable httpd.service
+             yum install python3-pip -y
+             yum install git -y
+             pip3 install virtualenv
+             echo Hello Everyone Updated Software Package Installed httpd Started httpd Installed python3-pip And virtualEnv Installed Flask Installed Git For Cloning > /var/www/html/index.html
+       
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0     
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+  EC2IAM: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
+
+
